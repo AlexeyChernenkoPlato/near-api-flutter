@@ -97,10 +97,11 @@ class Contract {
 
   /// Calls contract view functions
   Future<Map<dynamic, dynamic>> callViewFuntion(
-      String methodName, String methodArgs) async {
+      String methodName, String methodArgs,
+      [int? blockId]) async {
     List<int> bytes = utf8.encode(methodArgs);
     String base64MethodArgs = base64.encode(bytes);
     return await callerAccount.provider
-        .callViewFunction(contractId, methodName, base64MethodArgs);
+        .callViewFunction(contractId, methodName, base64MethodArgs, blockId);
   }
 }
