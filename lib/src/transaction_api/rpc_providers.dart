@@ -57,14 +57,10 @@ abstract class RPCProvider {
     Map<String, String> headers = {};
     headers[Constants.contentType] = Constants.applicationJson;
 
-    try {
-      http.Response responseData =
-          await http.post(Uri.parse(providerURL), headers: headers, body: body);
-      Map jsonBody = jsonDecode(responseData.body);
-      return jsonBody;
-    } catch (exp) {
-      return {"EXCEPTION": exp};
-    }
+    http.Response responseData =
+        await http.post(Uri.parse(providerURL), headers: headers, body: body);
+    Map jsonBody = jsonDecode(responseData.body);
+    return jsonBody;
   }
 
   /// Allows you to call a contract method as a view function.
@@ -87,13 +83,9 @@ abstract class RPCProvider {
     Map<String, String> headers = {};
     headers[Constants.contentType] = Constants.applicationJson;
 
-    try {
-      http.Response responseData =
-          await http.post(Uri.parse(providerURL), headers: headers, body: body);
-      Map jsonBody = jsonDecode(responseData.body);
-      return jsonBody;
-    } catch (exp) {
-      return {"EXCEPTION": exp};
-    }
+    http.Response responseData =
+        await http.post(Uri.parse(providerURL), headers: headers, body: body);
+    Map jsonBody = jsonDecode(responseData.body);
+    return jsonBody;
   }
 }
