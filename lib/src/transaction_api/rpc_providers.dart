@@ -12,8 +12,7 @@ class NEARTestNetRPCProvider extends RPCProvider {
     return _nearTestNetRPCProvider;
   }
 
-  NEARTestNetRPCProvider._internal()
-      : super('https://archival-rpc.testnet.near.org');
+  NEARTestNetRPCProvider._internal() : super("https://rpc.testnet.near.org");
 }
 
 /// Manages RPC calls
@@ -30,7 +29,7 @@ abstract class RPCProvider {
       "method": "query",
       "params": {
         "request_type": "view_access_key",
-        "finality": "final",
+        "finality": "optimistic",
         "account_id": accountId,
         "public_key": "ed25519:$publicKey"
       }
@@ -72,7 +71,7 @@ abstract class RPCProvider {
       "method": "query",
       "params": <String, dynamic>{
         "request_type": "call_function",
-        "finality": "final",
+        "finality": "optimistic",
         "account_id": contractId,
         "method_name": methodName,
         "args_base64": methodArgs,

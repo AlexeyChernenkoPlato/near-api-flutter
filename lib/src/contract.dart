@@ -57,14 +57,8 @@ class Contract {
         .broadcastTransaction(encodedTransaction);
   }
 
-  Future<Map<dynamic, dynamic>> callFunctionWithDeposit(
-      String methodName,
-      String methodArgs,
-      Wallet wallet,
-      double nearAmount,
-      successURL,
-      failureURL,
-      approvalURL,
+  Future<void> callFunctionWithDeposit(String methodName, String methodArgs,
+      Wallet wallet, double nearAmount, successURL, failureURL, approvalURL,
       [int gasFees = Constants.defaultGas]) async {
     AccessKey accessKey = await callerAccount.findAccessKey();
 
@@ -92,7 +86,6 @@ class Contract {
         TransactionManager.encodeSerialization(serializedTransaction);
     wallet.requestDepositApproval(
         transactionEncoded, successURL, failureURL, approvalURL);
-    return {"Result": "Please follow wallet to approve transaction"};
   }
 
   /// Calls contract view functions
