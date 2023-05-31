@@ -9,13 +9,12 @@ import 'package:near_api_flutter/src/transaction_api/transaction_manager.dart';
 /// Represents a contract entity: contractId, view methods, and change methods
 class Contract {
   String contractId;
-  Account callerAccount; //account to sign change method transactions
 
-  Contract(this.contractId, this.callerAccount);
+  Contract(this.contractId);
 
   /// Calls contract mutate state functions
   Future<Map<dynamic, dynamic>> callFunction(
-      String functionName, String functionArgs,
+      Account callerAccount, String functionName, String functionArgs,
       [double nearAmount = 0.0, int gasFees = Constants.defaultGas]) async {
     AccessKey accessKey = await callerAccount.findAccessKey();
 
@@ -57,8 +56,15 @@ class Contract {
         .broadcastTransaction(encodedTransaction);
   }
 
-  Future<void> callFunctionWithDeposit(String methodName, String methodArgs,
-      Wallet wallet, double nearAmount, successURL, failureURL, approvalURL,
+  Future<void> callFunctionWithDeposit(
+      Account callerAccount,
+      String methodName,
+      String methodArgs,
+      Wallet wallet,
+      double nearAmount,
+      successURL,
+      failureURL,
+      approvalURL,
       [int gasFees = Constants.defaultGas]) async {
     AccessKey accessKey = await callerAccount.findAccessKey();
 
@@ -90,11 +96,11 @@ class Contract {
 
   /// Calls contract view functions
   Future<Map<dynamic, dynamic>> callViewFuntion(
-      String methodName, String methodArgs,
+      RPCProvider provider, String methodName, String methodArgs,
       [int? blockId]) async {
     List<int> bytes = utf8.encode(methodArgs);
     String base64MethodArgs = base64.encode(bytes);
-    return await callerAccount.provider
-        .callViewFunction(contractId, methodName, base64MethodArgs, blockId);
+    return await provider.callViewFunction(
+        contractId, methodName, base64MethodArgs, blockId);
   }
 }
