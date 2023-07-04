@@ -65,7 +65,7 @@ abstract class RPCProvider {
   /// Allows you to call a contract method as a view function.
   Future<Map<dynamic, dynamic>> callViewFunction(String contractId,
       String methodName, String methodArgs, int? blockId) async {
-    var body = json.encode({
+    var payload = <String, dynamic>{
       "jsonrpc": "2.0",
       "id": "dontcare",
       "method": "query",
@@ -75,15 +75,18 @@ abstract class RPCProvider {
         "account_id": contractId,
         "method_name": methodName,
         "args_base64": methodArgs,
-        "block_id": blockId,
       }
-    });
+    };
+
+    if (blockId != null) {
+      payload["params"]["block_id"] = blockId;
+    }
 
     Map<String, String> headers = {};
     headers[Constants.contentType] = Constants.applicationJson;
 
-    http.Response responseData =
-        await http.post(Uri.parse(providerURL), headers: headers, body: body);
+    http.Response responseData = await http.post(Uri.parse(providerURL),
+        headers: headers, body: jsonEncode(payload));
     Map jsonBody = jsonDecode(responseData.body);
     return jsonBody;
   }
