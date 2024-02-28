@@ -10,6 +10,18 @@ class Utils {
     double nearAmount = 1000000000000.0 * double.parse(amount);
     BigInt nearBigNumber =
         BigInt.parse("${nearAmount.toStringAsFixed(0)}000000000000");
+
+    return _decodeAmount(nearBigNumber);
+  }
+
+  static Uint8List decodeYoctoNearDeposit(String yoctoAmount) {
+    final nearAmount = double.parse(yoctoAmount);
+    final nearBigNumber = BigInt.from(nearAmount);
+
+    return _decodeAmount(nearBigNumber);
+  }
+
+  static Uint8List _decodeAmount(BigInt nearBigNumber) {
     String nearBinary = nearBigNumber.toRadixString(2);
     String nearU128Binary = nearBinary.padLeft(128, '0');
     List near8BitList = [];

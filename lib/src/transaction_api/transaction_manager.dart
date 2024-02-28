@@ -64,7 +64,7 @@ class TransactionManager {
                   methodName: transaction.methodName,
                   args: transaction.methodArgs,
                   gas: BigInt.from(transaction.gasFees),
-                  deposit: Utils.decodeNearDeposit(transaction.nearAmount)))
+                  deposit: Utils.decodeYoctoNearDeposit(transaction.nearAmount)))
         ],
             blockHash: base58.decode(transaction.accessKey.blockHash),
             nonce: BigInt.from(transaction.accessKey.nonce),
@@ -87,7 +87,7 @@ class TransactionManager {
                           args: transaction.methodArgs,
                           gas: BigInt.from(transaction.gasFees),
                           deposit:
-                              Utils.decodeNearDeposit(transaction.nearAmount)))
+                              Utils.decodeYoctoNearDeposit(transaction.nearAmount)))
                 ],
                 blockHash: base58.decode(transaction.accessKey.blockHash),
                 nonce: BigInt.from(transaction.accessKey.nonce),

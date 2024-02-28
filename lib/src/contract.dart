@@ -15,7 +15,7 @@ class Contract {
   /// Calls contract mutate state functions
   Future<Map<dynamic, dynamic>> callFunction(
       Account callerAccount, String functionName, String functionArgs,
-      [double nearAmount = 0.0, int gasFees = Constants.defaultGas]) async {
+      [String yoctoNearAmount = '0', int gasFees = Constants.defaultGas]) async {
     AccessKey accessKey = await callerAccount.findAccessKey();
 
     // Create Transaction
@@ -27,7 +27,7 @@ class Contract {
         actionType: ActionType.functionCall,
         signer: callerAccount.accountId,
         publicKey: publicKey,
-        nearAmount: nearAmount.toStringAsFixed(12),
+        nearAmount: yoctoNearAmount,
         gasFees: gasFees,
         receiver: contractId,
         methodName: functionName,
