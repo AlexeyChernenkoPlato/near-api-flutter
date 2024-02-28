@@ -95,7 +95,7 @@ class Contract {
   }
 
   /// Calls contract view functions
-  Future<Map<dynamic, dynamic>> callViewFuntion(
+  Future<Map<dynamic, dynamic>> callViewFunction(
       RPCProvider provider, String methodName, String methodArgs,
       [int? blockId]) async {
     List<int> bytes = utf8.encode(methodArgs);

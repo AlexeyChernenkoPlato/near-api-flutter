@@ -11,7 +11,7 @@ class NearCaller {
     int? blockId,
   }) async {
     final contract = Contract(contractId);
-    final resp = await contract.callViewFuntion(
+    final resp = await contract.callViewFunction(
         NEARTestNetRPCProvider(), method, jsonEncode(args ?? {}), blockId);
     return _handleViewResp(resp);
   }
