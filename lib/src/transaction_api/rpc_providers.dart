@@ -3,16 +3,12 @@ import 'package:http/http.dart' as http;
 import 'package:near_api_flutter/src/models/access_key.dart';
 import '../constants.dart';
 
-/// Stores near testnet rpc configuration
-class NEARTestNetRPCProvider extends RPCProvider {
-  static final NEARTestNetRPCProvider _nearTestNetRPCProvider =
-      NEARTestNetRPCProvider._internal();
+class NEARNetRPCProvider extends RPCProvider {
+  NEARNetRPCProvider(super.providerURL);
 
-  factory NEARTestNetRPCProvider() {
-    return _nearTestNetRPCProvider;
-  }
+  NEARNetRPCProvider.testnet() : super("https://rpc.testnet.near.org");
 
-  NEARTestNetRPCProvider._internal() : super("https://rpc.testnet.near.org");
+  NEARNetRPCProvider.mainnet() : super("https://rpc.mainnet.near.org");
 }
 
 /// Manages RPC calls

@@ -12,7 +12,7 @@ class NearCaller {
   }) async {
     final contract = Contract(contractId);
     final resp = await contract.callViewFunction(
-        NEARTestNetRPCProvider(), method, jsonEncode(args ?? {}), blockId);
+        NEARNetRPCProvider.testnet(), method, jsonEncode(args ?? {}), blockId);
     return _handleViewResp(resp);
   }
 
@@ -23,7 +23,7 @@ class NearCaller {
     required String publicKey,
     required String method,
     Map<String, dynamic>? args,
-    double? nearAmount,
+    String? nearAmount,
   }) async {
     final contract = Contract(contractId);
     var resp = {};
@@ -32,7 +32,7 @@ class NearCaller {
           getAccount(accountId, privateKey, publicKey),
           method,
           jsonEncode(args ?? {}),
-          nearAmount ?? 0);
+          nearAmount ?? '0');
     } while (jsonEncode(resp).contains("InvalidNonce"));
     return _handleChangeResp(resp);
   }
@@ -66,7 +66,7 @@ class NearCaller {
         PrivateKey(base58.decode(privateKey)),
         PublicKey(base58.decode(publicKey)),
       ),
-      provider: NEARTestNetRPCProvider(),
+      provider: NEARNetRPCProvider.testnet(),
     );
   }
 }
