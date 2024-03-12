@@ -1,8 +1,8 @@
-import 'dart:typed_data';
 import 'package:near_api_flutter/near_api_flutter.dart';
 import 'package:near_api_flutter/src/constants.dart';
 import 'package:near_api_flutter/src/models/action_types.dart';
 import 'package:near_api_flutter/src/models/transaction_dto.dart';
+import 'package:near_api_flutter/src/transaction_api/exponential_backoff.dart';
 import 'package:near_api_flutter/src/transaction_api/transaction_manager.dart';
 
 /// This class provides common account related RPC calls
@@ -19,43 +19,58 @@ class Account {
 
   /// Transfer near from account to receiver
   Future<Map<dynamic, dynamic>> sendTokens(
-      double nearAmount, String receiver) async {
-    AccessKey accessKey = await findAccessKey();
+    double nearAmount,
+    String receiver,
+  ) async {
+    final accessKeyFuture = findAccessKey();
+    final blockFuture = provider.getBlockDetails();
+    await Future.wait([accessKeyFuture, blockFuture]);
+    final accessKey = await accessKeyFuture;
+    final block = await blockFuture;
+    accessKey.blockHash = block.header.hash;
 
     // Create Transaction
     accessKey.nonce++;
-    String publicKey = KeyStore.publicKeyToString(keyPair.publicKey);
+    final publicKey = KeyStore.publicKeyToString(keyPair.publicKey);
 
-    Transaction transaction = Transaction(
-        signer: accountId,
-        publicKey: publicKey,
-        nearAmount: nearAmount.toStringAsFixed(12),
-        gasFees: Constants.defaultGas,
-        receiver: receiver,
-        methodName: '',
-        methodArgs: '',
-        accessKey: accessKey,
-        actionType: ActionType.transfer);
+    final transaction = Transaction(
+      signer: accountId,
+      publicKey: publicKey,
+      nearAmount: nearAmount.toStringAsFixed(12),
+      gasFees: Constants.defaultGas,
+      receiver: receiver,
+      methodName: '',
+      methodArgs: '',
+      accessKey: accessKey,
+      actionType: ActionType.transfer,
+    );
 
     // Serialize Transaction
-    Uint8List serializedTransaction =
+    final serializedTransaction =
         TransactionManager.serializeTransferTransaction(transaction);
-    Uint8List hashedSerializedTx =
+    final hashedSerializedTx =
         TransactionManager.toSHA256(serializedTransaction);
 
     // Sign Transaction
-    Uint8List signature = TransactionManager.signTransaction(
-        keyPair.privateKey, hashedSerializedTx);
+    final signature = TransactionManager.signTransaction(
+      keyPair.privateKey,
+      hashedSerializedTx,
+    );
 
     // Serialize Signed Transaction
-    Uint8List serializedSignedTransaction =
+    final serializedSignedTransaction =
         TransactionManager.serializeSignedTransferTransaction(
-            transaction, signature);
-    String encodedTransaction =
+      transaction,
+      signature,
+    );
+
+    final encodedTransaction =
         TransactionManager.encodeSerialization(serializedSignedTransaction);
 
     // Broadcast Transaction
-    return await provider.broadcastTransaction(encodedTransaction);
+    return await exponentialBackoff(
+      getResult: () => provider.broadcastTransaction(encodedTransaction),
+    );
   }
 
   /// Gets user accessKey information

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:near_api_flutter/src/models/access_key.dart';
 import '../constants.dart';
+import '../models/block_details.dart';
 
 class NEARNetRPCProvider extends RPCProvider {
   NEARNetRPCProvider(super.providerURL);
@@ -17,9 +18,25 @@ abstract class RPCProvider {
 
   RPCProvider(this.providerURL);
 
+  Future<BlockDetails> getBlockDetails() async {
+    final payload = {
+      "jsonrpc": "2.0",
+      "id": "dontcare",
+      "method": "block",
+      "params": {"finality": "final"}
+    };
+    final jsonBody = await _callRpc(payload);
+    final result = jsonBody['result'];
+    if (result != null) {
+      return BlockDetails.fromJson(result);
+    }
+
+    throw jsonBody;
+  }
+
   /// Calls near RPC API's getAccessKeys for nonce and block hash
   Future<AccessKey> findAccessKey(accountId, publicKey) async {
-    var body = json.encode({
+    final payload = {
       "jsonrpc": "2.0",
       "id": "dontcare",
       "method": "query",
@@ -29,38 +46,34 @@ abstract class RPCProvider {
         "account_id": accountId,
         "public_key": "ed25519:$publicKey"
       }
-    });
-    Map<String, String> headers = {};
-    headers[Constants.contentType] = Constants.applicationJson;
+    };
 
-    http.Response responseData =
-        await http.post(Uri.parse(providerURL), headers: headers, body: body);
+    final jsonBody = await _callRpc(payload);
 
-    dynamic jsonBody = jsonDecode(responseData.body);
     return AccessKey.fromJson(jsonBody['result']);
   }
 
   /// Calls near RPC API's broadcast_tx_commit to broadcast the transaction and waits until transaction is fully complete.
-  Future<Map<dynamic, dynamic>> broadcastTransaction(
-      String encodedTransaction) async {
-    var body = json.encode({
+  Future<Map<String, dynamic>> broadcastTransaction(
+    String encodedTransaction,
+  ) async {
+    final payload = {
       "jsonrpc": "2.0",
       "id": "dontcare",
       "method": "broadcast_tx_commit",
       "params": [encodedTransaction]
-    });
-    Map<String, String> headers = {};
-    headers[Constants.contentType] = Constants.applicationJson;
+    };
 
-    http.Response responseData =
-        await http.post(Uri.parse(providerURL), headers: headers, body: body);
-    Map jsonBody = jsonDecode(responseData.body);
-    return jsonBody;
+    return _callRpc(payload);
   }
 
   /// Allows you to call a contract method as a view function.
-  Future<Map<dynamic, dynamic>> callViewFunction(String contractId,
-      String methodName, String methodArgs, int? blockId) async {
+  Future<Map<dynamic, dynamic>> callViewFunction(
+    String contractId,
+    String methodName,
+    String methodArgs,
+    int? blockId,
+  ) async {
     var payload = <String, dynamic>{
       "jsonrpc": "2.0",
       "id": "dontcare",
@@ -78,12 +91,22 @@ abstract class RPCProvider {
       payload["params"]["block_id"] = blockId;
     }
 
+    return _callRpc(payload);
+  }
+
+  Future<Map<String, dynamic>> _callRpc(
+    Map<String, dynamic> payload,
+  ) async {
     Map<String, String> headers = {};
     headers[Constants.contentType] = Constants.applicationJson;
 
-    http.Response responseData = await http.post(Uri.parse(providerURL),
-        headers: headers, body: jsonEncode(payload));
-    Map jsonBody = jsonDecode(responseData.body);
+    http.Response responseData = await http.post(
+      Uri.parse(providerURL),
+      headers: headers,
+      body: jsonEncode(payload),
+    );
+
+    final jsonBody = jsonDecode(responseData.body);
     return jsonBody;
   }
 }
