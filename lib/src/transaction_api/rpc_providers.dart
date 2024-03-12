@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:near_api_flutter/src/models/access_key.dart';
+import 'package:near_api_flutter/src/models/transaction_result/final_execution_outcome.dart';
+import 'package:near_api_flutter/src/transaction_api/exponential_backoff.dart';
 import '../constants.dart';
 import '../models/block_details.dart';
 
@@ -16,16 +18,31 @@ class NEARNetRPCProvider extends RPCProvider {
 abstract class RPCProvider {
   String providerURL;
 
-  RPCProvider(this.providerURL);
+  /// Keep ids unique across all connections.
+  late int _nextId;
+
+  RPCProvider(this.providerURL) {
+    _nextId = 123;
+  }
+
+  Future<FinalExecutionOutcome> checkTxnStatus({
+    required String txnHash,
+    required String senderAccountId,
+  }) async {
+    final params = [txnHash, senderAccountId];
+
+    final jsonBody = await _sendJsonRpc("tx", params);
+    final result = jsonBody['result'];
+    if (result != null) {
+      return FinalExecutionOutcome.fromJson(result);
+    }
+
+    throw jsonBody;
+  }
 
   Future<BlockDetails> getBlockDetails() async {
-    final payload = {
-      "jsonrpc": "2.0",
-      "id": "dontcare",
-      "method": "block",
-      "params": {"finality": "final"}
-    };
-    final jsonBody = await _callRpc(payload);
+    final params = {"finality": "final"};
+    final jsonBody = await _sendJsonRpc("block", params);
     final result = jsonBody['result'];
     if (result != null) {
       return BlockDetails.fromJson(result);
@@ -36,19 +53,14 @@ abstract class RPCProvider {
 
   /// Calls near RPC API's getAccessKeys for nonce and block hash
   Future<AccessKey> findAccessKey(accountId, publicKey) async {
-    final payload = {
-      "jsonrpc": "2.0",
-      "id": "dontcare",
-      "method": "query",
-      "params": {
-        "request_type": "view_access_key",
-        "finality": "optimistic",
-        "account_id": accountId,
-        "public_key": "ed25519:$publicKey"
-      }
+    final params = {
+      "request_type": "view_access_key",
+      "finality": "optimistic",
+      "account_id": accountId,
+      "public_key": "ed25519:$publicKey"
     };
 
-    final jsonBody = await _callRpc(payload);
+    final jsonBody = await _sendJsonRpc("query", params);
 
     return AccessKey.fromJson(jsonBody['result']);
   }
@@ -57,14 +69,23 @@ abstract class RPCProvider {
   Future<Map<String, dynamic>> broadcastTransaction(
     String encodedTransaction,
   ) async {
-    final payload = {
-      "jsonrpc": "2.0",
-      "id": "dontcare",
-      "method": "broadcast_tx_commit",
-      "params": [encodedTransaction]
-    };
+    final params = [encodedTransaction];
 
-    return _callRpc(payload);
+    return _sendJsonRpc("broadcast_tx_commit", params);
+  }
+
+  Future<String> broadcastTransactionAsync(
+    String encodedTransaction,
+  ) async {
+    final params = [encodedTransaction];
+
+    final jsonBody = await _sendJsonRpc("broadcast_tx_async", params);
+    final txnHash = jsonBody['result'];
+    if (txnHash != null) {
+      return txnHash;
+    }
+
+    throw jsonBody;
   }
 
   /// Allows you to call a contract method as a view function.
@@ -74,39 +95,46 @@ abstract class RPCProvider {
     String methodArgs,
     int? blockId,
   ) async {
-    var payload = <String, dynamic>{
-      "jsonrpc": "2.0",
-      "id": "dontcare",
-      "method": "query",
-      "params": <String, dynamic>{
-        "request_type": "call_function",
-        "finality": "optimistic",
-        "account_id": contractId,
-        "method_name": methodName,
-        "args_base64": methodArgs,
-      }
+    Map<String, dynamic> params = {
+      "request_type": "call_function",
+      "finality": "optimistic",
+      "account_id": contractId,
+      "method_name": methodName,
+      "args_base64": methodArgs,
     };
 
     if (blockId != null) {
-      payload["params"]["block_id"] = blockId;
+      params["block_id"] = blockId;
     }
 
-    return _callRpc(payload);
+    return _sendJsonRpc("query", params);
   }
 
-  Future<Map<String, dynamic>> _callRpc(
-    Map<String, dynamic> payload,
-  ) async {
-    Map<String, String> headers = {};
-    headers[Constants.contentType] = Constants.applicationJson;
+  Future<Map<String, dynamic>> _sendJsonRpc(
+    String method,
+    dynamic params,
+  ) {
+    Future<Map<String, dynamic>> callRpc() async {
+      final headers = {
+        Constants.contentType: Constants.applicationJson,
+      };
 
-    http.Response responseData = await http.post(
-      Uri.parse(providerURL),
-      headers: headers,
-      body: jsonEncode(payload),
-    );
+      final payload = {
+        'method': method,
+        'params': params,
+        'id': (_nextId++),
+        'jsonrpc': '2.0',
+      };
 
-    final jsonBody = jsonDecode(responseData.body);
-    return jsonBody;
+      http.Response responseData = await http.post(
+        Uri.parse(providerURL),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+
+      return jsonDecode(responseData.body);
+    }
+
+    return exponentialBackoff(getResult: callRpc);
   }
 }

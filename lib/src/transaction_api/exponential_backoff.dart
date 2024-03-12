@@ -3,7 +3,7 @@ import '../constants.dart';
 
 const retryErrors = ['TIMEOUT_ERROR', 'UNKNOWN_TRANSACTION'];
 
-Future<dynamic> exponentialBackoff({
+Future<Map<String, dynamic>> exponentialBackoff({
   required Future<Map<String, dynamic>> Function() getResult,
   int waitTime = Constants.requestRetryWait,
   double waitBackoff = Constants.requestRetryWaitBackoff,

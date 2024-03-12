@@ -2,7 +2,6 @@ import 'package:near_api_flutter/near_api_flutter.dart';
 import 'package:near_api_flutter/src/constants.dart';
 import 'package:near_api_flutter/src/models/action_types.dart';
 import 'package:near_api_flutter/src/models/transaction_dto.dart';
-import 'package:near_api_flutter/src/transaction_api/exponential_backoff.dart';
 import 'package:near_api_flutter/src/transaction_api/transaction_manager.dart';
 
 /// This class provides common account related RPC calls
@@ -19,6 +18,17 @@ class Account {
 
   /// Transfer near from account to receiver
   Future<Map<dynamic, dynamic>> sendTokens(
+    double nearAmount,
+    String receiver,
+  ) async {
+    final encodedTransaction = await createSignedTxn(nearAmount, receiver);
+
+    // Broadcast Transaction
+    return provider.broadcastTransaction(encodedTransaction);
+  }
+
+  /// Transfer near from account to receiver
+  Future<String> createSignedTxn(
     double nearAmount,
     String receiver,
   ) async {
@@ -64,13 +74,7 @@ class Account {
       signature,
     );
 
-    final encodedTransaction =
-        TransactionManager.encodeSerialization(serializedSignedTransaction);
-
-    // Broadcast Transaction
-    return await exponentialBackoff(
-      getResult: () => provider.broadcastTransaction(encodedTransaction),
-    );
+    return TransactionManager.encodeSerialization(serializedSignedTransaction);
   }
 
   /// Gets user accessKey information

@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
+
+import 'package:near_api_flutter/src/models/transaction_result/final_execution_outcome.dart';
 
 import 'models/near_client_result/storage_balance.dart';
 import '../near_api_flutter.dart';
@@ -11,6 +14,44 @@ class NearClient {
   NearClient.testnet() : this(NEARNetRPCProvider.testnet());
 
   NearClient.mainnet() : this(NEARNetRPCProvider.mainnet());
+
+  Future<String> createSignedTransaction({
+    required NearWallet payer,
+    required String receiverId,
+    required double nearAmount,
+  }) {
+    final payerAccount = Account(
+      accountId: payer.accountId,
+      keyPair: payer.keyPair,
+      provider: _rpcProvider,
+    );
+
+    return payerAccount.createSignedTxn(nearAmount, receiverId);
+  }
+
+  Future<FinalExecutionOutcome> transferNearAsyncAndWait({
+    required NearWallet payer,
+    required String receiverId,
+    required double nearAmount,
+    delayBeforeCheckingTxnStatus = const Duration(seconds: 10),
+  }) async {
+    final signedTxn = await createSignedTransaction(
+      payer: payer,
+      receiverId: receiverId,
+      nearAmount: nearAmount,
+    );
+
+    final txnHash = await _rpcProvider.broadcastTransactionAsync(signedTxn);
+    debugPrint("txnHash=$txnHash");
+
+    await Future.delayed(delayBeforeCheckingTxnStatus);
+    final txn = await _rpcProvider.checkTxnStatus(
+      txnHash: txnHash,
+      senderAccountId: payer.accountId,
+    );
+
+    return txn;
+  }
 
   Future<String> transferNear({
     required NearWallet payer,
