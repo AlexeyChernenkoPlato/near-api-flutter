@@ -3,8 +3,11 @@ import 'package:flutter/foundation.dart';
 
 import 'package:near_api_flutter/src/models/transaction_result/final_execution_outcome.dart';
 
+import 'constants.dart';
+import 'models/action_types.dart';
 import 'models/near_client_result/storage_balance.dart';
 import '../near_api_flutter.dart';
+import 'models/transaction_dto.dart';
 
 class NearClient {
   final NEARNetRPCProvider _rpcProvider;
@@ -27,6 +30,57 @@ class NearClient {
     );
 
     return payerAccount.createSignedTxn(nearAmount, receiverId);
+  }
+
+  Future<String> createSignedFtTransaction({
+    required NearWallet payer,
+    required String receiverId,
+    required String contractId,
+    required double amount,
+  }) async {
+    List<Transaction> transactions = [];
+    final contract = Contract(contractId);
+    final payerAccount = Account(
+      accountId: payer.accountId,
+      keyPair: payer.keyPair,
+      provider: _rpcProvider,
+    );
+    final receiverStorageBalance = await storageBalanceOf(
+      accountId: receiverId,
+      contractId: contractId,
+    );
+
+    if (!receiverStorageBalance.hasEnoughMinimum) {
+      final optInContract = Transaction(
+        actionType: ActionType.functionCall,
+        signer: payerAccount.accountId,
+        nearAmount: Constants.minStorageDepositYoctoNearAmount,
+        gasFees: Constants.defaultGas,
+        receiver: contractId,
+        methodName: "storage_deposit",
+        methodArgs: jsonEncode({"account_id": receiverId}),
+      );
+      transactions.add(optInContract);
+    }
+
+    final ftTransferTxn = Transaction(
+      actionType: ActionType.functionCall,
+      signer: payerAccount.accountId,
+      nearAmount: "1",
+      gasFees: Constants.defaultGas,
+      receiver: contractId,
+      methodName: "ft_transfer",
+      methodArgs: jsonEncode({
+        "receiver_id": receiverId,
+        "amount": amount.toStringAsFixed(0),
+      }),
+    );
+    transactions.add(ftTransferTxn);
+
+    return contract.signCallFunctionWithActions(
+      payerAccount,
+      transactions,
+    );
   }
 
   Future<FinalExecutionOutcome> transferNearAsyncAndWait({
@@ -84,10 +138,10 @@ class NearClient {
     final methodArgs = jsonEncode({"account_id": receiverId});
 
     final result = await contract.callFunction(
-      payerAccount,
-      "storage_deposit",
-      methodArgs,
-      minStorageDepositYoctoNearAmount,
+      callerAccount: payerAccount,
+      functionName: "storage_deposit",
+      functionArgs: methodArgs,
+      yoctoNearAmount: minStorageDepositYoctoNearAmount,
     );
 
     return _getTransactionSignature(result);
@@ -111,10 +165,10 @@ class NearClient {
     });
 
     final result = await usdcContract.callFunction(
-      payerAccount,
-      "ft_transfer",
-      methodArgs,
-      "1",
+      callerAccount: payerAccount,
+      functionName: "ft_transfer",
+      functionArgs: methodArgs,
+      yoctoNearAmount: "1",
     );
 
     return _getTransactionSignature(result);

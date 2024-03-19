@@ -29,10 +29,10 @@ class NearCaller {
     var resp = {};
     do {
       resp = await contract.callFunction(
-          getAccount(accountId, privateKey, publicKey),
-          method,
-          jsonEncode(args ?? {}),
-          nearAmount ?? '0');
+          callerAccount: getAccount(accountId, privateKey, publicKey),
+          functionName: method,
+          functionArgs: jsonEncode(args ?? {}),
+          yoctoNearAmount: nearAmount ?? '0');
     } while (jsonEncode(resp).contains("InvalidNonce"));
     return _handleChangeResp(resp);
   }

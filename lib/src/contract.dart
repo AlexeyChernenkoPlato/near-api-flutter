@@ -13,9 +13,52 @@ class Contract {
   Contract(this.contractId);
 
   /// Calls contract mutate state functions
-  Future<Map<dynamic, dynamic>> callFunction(
-      Account callerAccount, String functionName, String functionArgs,
-      [String yoctoNearAmount = '0', int gasFees = Constants.defaultGas]) async {
+  Future<String> signCallFunctionWithActions(
+    Account callerAccount,
+    List<Transaction> transactions,
+  ) async {
+    AccessKey accessKey = await callerAccount.findAccessKey();
+
+    // Create Transaction
+    accessKey.nonce++;
+    String publicKey =
+        KeyStore.publicKeyToString(callerAccount.keyPair.publicKey);
+
+    for (var transaction in transactions) {
+      transaction.publicKey = publicKey;
+      transaction.accessKey = accessKey;
+    }
+
+    // Serialize Transaction
+    Uint8List serializedTransaction =
+        TransactionManager.serializeFunctionCallTransactions(transactions);
+    Uint8List hashedSerializedTx =
+        TransactionManager.toSHA256(serializedTransaction);
+
+    // Sign Transaction
+    Uint8List signature = TransactionManager.signTransaction(
+        callerAccount.keyPair.privateKey, hashedSerializedTx);
+
+    // Serialize Signed Transaction
+    Uint8List serializedSignedTransaction =
+        TransactionManager.serializeSignedFunctionCallTransactions(
+      transactions,
+      signature,
+    );
+    String encodedTransaction =
+        TransactionManager.encodeSerialization(serializedSignedTransaction);
+
+    return encodedTransaction;
+  }
+
+  /// Calls contract mutate state functions
+  Future<Map<dynamic, dynamic>> callFunction({
+    required Account callerAccount,
+    required String functionName,
+    required String functionArgs,
+    String yoctoNearAmount = '0',
+    int gasFees = Constants.defaultGas,
+  }) async {
     AccessKey accessKey = await callerAccount.findAccessKey();
 
     // Create Transaction

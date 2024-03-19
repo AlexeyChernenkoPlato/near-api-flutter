@@ -25,10 +25,10 @@ class TransactionManager {
               transferActionArgs: TransferActionArgs(
                   deposit: Utils.decodeNearDeposit(transaction.nearAmount)))
         ],
-            blockHash: base58.decode(transaction.accessKey.blockHash),
-            nonce: BigInt.from(transaction.accessKey.nonce),
+            blockHash: base58.decode(transaction.accessKey!.blockHash),
+            nonce: BigInt.from(transaction.accessKey!.nonce),
             publicKey: PublicKey(
-                data: base58.decode(transaction.publicKey), keyType: 0),
+                data: base58.decode(transaction.publicKey!), keyType: 0),
             receiverId: transaction.receiver,
             signerId: transaction.signer)
         .toBorsh();
@@ -45,10 +45,10 @@ class TransactionManager {
                           deposit:
                               Utils.decodeNearDeposit(transaction.nearAmount)))
                 ],
-                blockHash: base58.decode(transaction.accessKey.blockHash),
-                nonce: BigInt.from(transaction.accessKey.nonce),
+                blockHash: base58.decode(transaction.accessKey!.blockHash),
+                nonce: BigInt.from(transaction.accessKey!.nonce),
                 publicKey: PublicKey(
-                    data: base58.decode(transaction.publicKey), keyType: 0),
+                    data: base58.decode(transaction.publicKey!), keyType: 0),
                 receiverId: transaction.receiver,
                 signerId: transaction.signer),
             signature: Signature(keyType: 0, data: signature))
@@ -56,47 +56,76 @@ class TransactionManager {
   }
 
   static Uint8List serializeFunctionCallTransaction(Transaction transaction) {
+    return serializeFunctionCallTransactions([transaction]);
+  }
+
+  static Uint8List serializeFunctionCallTransactions(
+    List<Transaction> transactions,
+  ) {
     return FunctionCallTransaction(
-            functionCallActions: [
-          FunctionCallAction(
+      functionCallActions: transactions
+          .map(
+            (transaction) => FunctionCallAction(
               actionNumber: ActionType.functionCall.value,
               functionCallActionArgs: FunctionCallActionArgs(
+                methodName: transaction.methodName,
+                args: transaction.methodArgs,
+                gas: BigInt.from(transaction.gasFees),
+                deposit: Utils.decodeYoctoNearDeposit(
+                  transaction.nearAmount,
+                ),
+              ),
+            ),
+          )
+          .toList(),
+      blockHash: base58.decode(transactions.first.accessKey!.blockHash),
+      nonce: BigInt.from(transactions.first.accessKey!.nonce),
+      publicKey: PublicKey(
+        data: base58.decode(transactions.first.publicKey!),
+        keyType: 0,
+      ),
+      receiverId: transactions.first.receiver,
+      signerId: transactions.first.signer,
+    ).toBorsh();
+  }
+
+  static Uint8List serializeSignedFunctionCallTransactions(
+    List<Transaction> transactions,
+    Uint8List signature,
+  ) {
+    return SignedFunctionCallTransaction(
+      functionCallTransaction: FunctionCallTransaction(
+        functionCallActions: transactions
+            .map(
+              (transaction) => FunctionCallAction(
+                actionNumber: ActionType.functionCall.value,
+                functionCallActionArgs: FunctionCallActionArgs(
                   methodName: transaction.methodName,
                   args: transaction.methodArgs,
                   gas: BigInt.from(transaction.gasFees),
-                  deposit: Utils.decodeYoctoNearDeposit(transaction.nearAmount)))
-        ],
-            blockHash: base58.decode(transaction.accessKey.blockHash),
-            nonce: BigInt.from(transaction.accessKey.nonce),
-            publicKey: PublicKey(
-                data: base58.decode(transaction.publicKey), keyType: 0),
-            receiverId: transaction.receiver,
-            signerId: transaction.signer)
-        .toBorsh();
+                  deposit: Utils.decodeYoctoNearDeposit(transaction.nearAmount),
+                ),
+              ),
+            )
+            .toList(),
+        blockHash: base58.decode(transactions.first.accessKey!.blockHash),
+        nonce: BigInt.from(transactions.first.accessKey!.nonce),
+        publicKey: PublicKey(
+          data: base58.decode(transactions.first.publicKey!),
+          keyType: 0,
+        ),
+        receiverId: transactions.first.receiver,
+        signerId: transactions.first.signer,
+      ),
+      signature: Signature(keyType: 0, data: signature),
+    ).toBorsh();
   }
 
   static Uint8List serializeSignedFunctionCallTransaction(
-      Transaction transaction, signature) {
-    return SignedFunctionCallTransaction(
-            functionCallTransaction: FunctionCallTransaction(
-                functionCallActions: [
-                  FunctionCallAction(
-                      actionNumber: ActionType.functionCall.value,
-                      functionCallActionArgs: FunctionCallActionArgs(
-                          methodName: transaction.methodName,
-                          args: transaction.methodArgs,
-                          gas: BigInt.from(transaction.gasFees),
-                          deposit:
-                              Utils.decodeYoctoNearDeposit(transaction.nearAmount)))
-                ],
-                blockHash: base58.decode(transaction.accessKey.blockHash),
-                nonce: BigInt.from(transaction.accessKey.nonce),
-                publicKey: PublicKey(
-                    data: base58.decode(transaction.publicKey), keyType: 0),
-                receiverId: transaction.receiver,
-                signerId: transaction.signer),
-            signature: Signature(keyType: 0, data: signature))
-        .toBorsh();
+    Transaction transaction,
+    Uint8List signature,
+  ) {
+    return serializeSignedFunctionCallTransactions([transaction], signature);
   }
 
   //signTransaction by user's private key using ed library
